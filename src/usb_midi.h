@@ -12,6 +12,8 @@ USBH_MIDI Midi(&Usb);
 
 extern void handleNoteOn(byte channel, byte pitch, byte velocity);
 extern void handleNoteOff(byte channel, byte pitch, byte velocity);
+extern void handlePedalDown();
+extern void handlePedalUp();
 void midi_poll();
 
 void midi_setup() {
@@ -36,27 +38,31 @@ void midi_poll() {
   uint16_t rcvd;
 
   uint8_t note = 0;
-  // Set ignore to true to ignore an event that isn't note down/up
+  // Events that aren't note down/up or pedal will be ignored
   // Note down is 0x09, 0x90, key, velocity (> 0)
   // Note up is   0x09, 0x90, key, 0
-  bool ignore = false;
+  bool is_note = false;
+  bool is_pedal = false;
   if (Midi.RecvData(&rcvd, bufMidi) == 0) {
     for (unsigned char pos = 0; pos < 64; pos++) {
       uint8_t b = bufMidi[pos];
 
       if (pos % 4 == 0) {
-        ignore = false;
+        is_note = false;
+        is_pedal = false;
         if (b == 0x0F || b == 0x00) break;
-        if (b != 0x09) ignore = true;
+        if (b == 0x09) is_note = true;
+        if (b == 0x0B) is_pedal = true;
         Serial.print("Event 1: ");
         Serial.println(b, HEX);
 
       } else if (pos % 4 == 1) {
-        if (b != 0x90) ignore = true;
+        if (b != 0x90) is_note = false;
         Serial.print("Event 2: ");
         Serial.println(b, HEX);
 
       } else if (pos % 4 == 2) {
+        if (b != 0x40) is_pedal = false;
         Serial.print("Note: ");
         note = b;
         Serial.println(b, HEX);
@@ -64,11 +70,18 @@ void midi_poll() {
       } else if (pos % 4 == 3) {
         Serial.print("Velocity: ");
         Serial.println(b, HEX);
-        if (ignore) continue;
-        if (b == 0) {
-          handleNoteOff(0, note, b);
-        } else {
-          handleNoteOn(0, note, b);
+        if (is_note) {
+          if (b == 0) {
+            handleNoteOff(0, note, b);
+          } else {
+            handleNoteOn(0, note, b);
+          }
+        } else if (is_pedal) {
+          if (b == 0) {
+            handlePedalUp();
+          } else {
+            handlePedalDown();
+          }
         }
       }
     }

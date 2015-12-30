@@ -20,7 +20,9 @@ const byte hueTime = 30;
 
 // fade-out rate. higher = longer, slower fades
 const byte normalFadeRate = 2;
-const byte midiFadeRate = 5;
+const byte pedalUpRate = 4;
+const byte pedalDownRate = 10;
+bool pedalDown = false;
 
 byte fadeCount = 0;
 unsigned long lastMidi = -midiTimeout;
@@ -36,11 +38,19 @@ void handleNoteOn(byte channel, byte pitch, byte velocity) {
     fillAll(CRGB::Black);
   }
   lastMidi = currentMillis;
-  confettiMidiOn(velocity);
+  splashMidiOn(pitch, velocity);
 }
 
 void handleNoteOff(byte channel, byte pitch, byte velocity) {
   digitalWrite(PIN_LED, HIGH);
+}
+
+void handlePedalDown() {
+  pedalDown = true;
+}
+
+void handlePedalUp() {
+  pedalDown = false;
 }
 
 void setup() {
@@ -63,6 +73,9 @@ void setup() {
 
   // start USB MIDI
   midi_setup();
+
+  // pick a random palette at startup
+  selectRandomPalette();
 }
 
 // list of functions that will be displayed
@@ -77,7 +90,11 @@ void loop() {
   // run a fade effect too if the confetti effect or MIDI is running
   byte fadeRate;
   if (midiEn) {
-    fadeRate = midiFadeRate;
+    if (pedalDown) {
+      fadeRate = pedalDownRate;
+    } else {
+      fadeRate = pedalUpRate;
+    }
   } else {
     fadeRate = normalFadeRate;
   }
@@ -116,6 +133,15 @@ void loop() {
 
   FastLED.show();  // send the contents of the led memory to the LEDs
 
+  // check the brightness dial
+  if (currentMillis % 10 == 0) {
+    int dial_raw = analogRead(BRIGHTNESS_DIAL);
+    byte dial = map(dial_raw, 0, 1023, 0, 255);
+    byte dimmed = dim8_raw(dial);
+    FastLED.setBrightness(dimmed);
+  }
+
+  // skip fx if midi is being played right now
   midiEn = midiEnabled();
   if (midiEn) return;
 
@@ -140,13 +166,5 @@ void loop() {
     effectMillis = currentMillis;
     effectList[currentEffect]();  // run the selected effect function
     random16_add_entropy(1);  // make the random values a bit more random-ish
-  }
-
-  // check the brightness dial
-  if (currentMillis % 10 == 0) {
-    int dial_raw = analogRead(BRIGHTNESS_DIAL);
-    byte dial = map(dial_raw, 0, 1023, 0, 255);
-    byte dimmed = dim8_raw(dial);
-    FastLED.setBrightness(dimmed);
   }
 }

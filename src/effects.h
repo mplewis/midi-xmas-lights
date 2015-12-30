@@ -90,3 +90,26 @@ void confettiMidiOn(uint8_t intensity) {
     leds[random16(NUM_LEDS)] =
       ColorFromPalette(currentPalette, random16(255), brightness);
 }
+
+unsigned int seq_pos = 0;
+void sequentialMidiOn(uint8_t intensity) {
+  uint8_t brightness = dim8_raw(map(intensity, 0, 127, 32, 255));
+  leds[seq_pos] = ColorFromPalette(currentPalette, random16(255), brightness);
+  seq_pos = (seq_pos + 1) % NUM_LEDS;
+}
+
+void oneToOneMidiOn(uint16_t note, uint8_t intensity) {
+  uint16_t pos = note - 0x15; // lowest note on the 88-key MIDI keyboard
+  uint8_t brightness = dim8_raw(map(intensity, 0, 127, 32, 255));
+  leds[pos] = ColorFromPalette(currentPalette, random16(255), brightness);
+}
+
+void splashMidiOn(uint16_t note, uint8_t intensity) {
+  // lowest note on the 88-key MIDI keyboard plus 4 on the outside
+  uint16_t pos = note - 0x19;
+  uint8_t asideCount = map(intensity, 0, 127, 0, 4);
+  uint8_t brightness = dim8_raw(map(intensity, 0, 127, 32, 255));
+  for (int i = pos - asideCount; i <= pos + asideCount; i++) {
+    leds[i] = ColorFromPalette(currentPalette, random16(255), brightness);
+  }
+}
