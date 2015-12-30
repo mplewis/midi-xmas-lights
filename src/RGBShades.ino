@@ -1,9 +1,9 @@
 #include <FastLED.h>
-#include <MIDI.h>
 #include "XYmap.h"
 #include "utils.h"
 #include "effects.h"
 #include "buttons.h"
+#include "usb_midi.h"
 
 #define COLOR_ORDER RGB
 #define CHIPSET WS2811
@@ -26,8 +26,6 @@ byte fadeCount = 0;
 unsigned long lastMidi = -midiTimeout;
 bool midiEn;
 
-MIDI_CREATE_DEFAULT_INSTANCE();
-
 bool midiEnabled() {
   return currentMillis - lastMidi < midiTimeout;
 }
@@ -38,7 +36,7 @@ void handleNoteOn(byte channel, byte pitch, byte velocity) {
     fillAll(CRGB::Black);
   }
   lastMidi = currentMillis;
-  confettiMidiOn(velocity);
+  confettiMidiOn(velocity * 2); // USB MIDI maxes out at 127
 }
 
 void handleNoteOff(byte channel, byte pitch, byte velocity) {
@@ -46,6 +44,8 @@ void handleNoteOff(byte channel, byte pitch, byte velocity) {
 }
 
 void setup() {
+  Serial.begin(115200);
+
   // write FastLED configuration data
   // .setCorrection(TypicalSMD5050);
   FastLED.addLeds<CHIPSET, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS);
@@ -61,9 +61,8 @@ void setup() {
   pinMode(ENTROPY_PIN, INPUT);
   pinMode(PIN_LED, OUTPUT);
 
-  // setup MIDI
-  MIDI.setHandleNoteOn(handleNoteOn);
-  MIDI.begin(MIDI_CHANNEL_OMNI);
+  // start USB MIDI
+  midi_setup();
 }
 
 // list of functions that will be displayed
@@ -73,7 +72,7 @@ functionList effectList[] = {plasma, confetti, rider, slantBars};
 // Runs over and over until power off or reset
 void loop() {
   currentMillis = millis();  // save the current timer value
-  MIDI.read();               // read notes from MIDI
+  handle_usb_midi();         // read notes from MIDI
 
   // run a fade effect too if the confetti effect or MIDI is running
   byte fadeRate;
