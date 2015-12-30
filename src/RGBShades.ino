@@ -36,7 +36,7 @@ void handleNoteOn(byte channel, byte pitch, byte velocity) {
     fillAll(CRGB::Black);
   }
   lastMidi = currentMillis;
-  confettiMidiOn(velocity * 2); // USB MIDI maxes out at 127
+  confettiMidiOn(velocity);
 }
 
 void handleNoteOff(byte channel, byte pitch, byte velocity) {
@@ -51,7 +51,7 @@ void setup() {
   FastLED.addLeds<CHIPSET, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS);
 
   // set global brightness value
-  FastLED.setBrightness(255);
+  FastLED.setBrightness(127);
 
   // configure input buttons
   pinMode(MODEBUTTON, INPUT_PULLUP);
